@@ -1,4 +1,5 @@
 ﻿#nullable enable
+using System;
 using System.Reflection;
 using System.Xml.Linq;
 using System.Xml.XPath;
@@ -15,6 +16,11 @@ namespace Common.XML
             return XMLSerializer.Deserialize<TParam>(payload);
         }
 
+        protected override object Deserialize(Type parameterType, XDocument payload)
+        {
+            return XMLSerializer.Deserialize(parameterType, payload);
+        }
+
         protected override XDocument? Serialize<TResult>(TResult result)
         {
             return XMLSerializer.Serialize(result);
@@ -22,7 +28,7 @@ namespace Common.XML
 
         protected override RouteAttribute? GetAttribute(MethodInfo methodInfo)
         {
-            return methodInfo.GetCustomAttribute<RouteAttribute>();
+            return methodInfo.GetCustomAttribute<XPathRouteAttribute>();
         }
 
         protected override bool IsValidMatch(RouteAttribute route, XDocument message)

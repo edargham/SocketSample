@@ -46,16 +46,21 @@ namespace Client
         public static async Task Main(string[] args)
         {
             //_xmlDispatcher.Register<HeartBeatResponseMessage<PayloadMessage>>(Handler.HeartBeatResponseHandler);
-            _jsonDispatcher.Register<HeartBeatResponseMessage<PayloadMessage>>(Handler.HeartBeatResponseHandler);
+            //_jsonDispatcher.Register<HeartBeatResponseMessage<PayloadMessage>>(Handler.HeartBeatResponseHandler);
+            
+            //_xmlDispatcher.Bind<Handler>();
+            _jsonDispatcher.Bind<Handler>();
 
             Console.WriteLine("Press any key to contact the echo server...");
             Console.ReadLine();
 
             IPEndPoint endPoint = new IPEndPoint(IPAddress.Loopback, 42369);
 
+            //_xmlDispatcher.Bind(_xmlClientChannel);
+            _jsonDispatcher.Bind(_jsonClientChannel);
             
             //_xmlClientChannel.SetCallBack(_xmlDispatcher.DispatchAsync);
-            _jsonClientChannel.SetCallBack(_jsonDispatcher.DispatchAsync);
+            //_jsonClientChannel.SetCallBack(_jsonDispatcher.DispatchAsync);
 
             //await _xmlClientChannel.ConnectAsync(endPoint).ConfigureAwait(false);
             await _jsonClientChannel.ConnectAsync(endPoint).ConfigureAwait(false);

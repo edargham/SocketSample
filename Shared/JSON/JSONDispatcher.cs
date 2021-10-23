@@ -1,4 +1,5 @@
 ﻿using Newtonsoft.Json.Linq;
+using System;
 using System.Reflection;
 
 namespace Common.JSON
@@ -8,6 +9,11 @@ namespace Common.JSON
         protected override TParam Deserialize<TParam>(JObject payload)
         {
             return JSONSerializer.Deserialize<TParam>(payload);
+        }
+
+        protected override object Deserialize(Type parameterType, JObject payload)
+        {
+            return JSONSerializer.ToObject(parameterType, payload);
         }
 
         protected override JObject Serialize<TResult>(TResult result)

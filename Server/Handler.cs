@@ -7,7 +7,7 @@ using Common.Enums;
 
 namespace Server
 {
-    public static class Handler
+    public class Handler
     {
         // Handler on the 'Server' side of the system.
         [XPathRoute("/Message[@type='Request' and @action='HeartBeat']")]

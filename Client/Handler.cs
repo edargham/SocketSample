@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace Client
 {
-    public static class Handler
+    public class Handler
     {
         // Handler on the 'Client' side of the system.
         [XPathRoute("/Message[@type='Response' and @action='HeartBeat']")]

@@ -20,7 +20,10 @@ namespace Server
         public SocketServer()
         {
             //_xmlDispatcher.Register<HeartBeatRequestMessage<PayloadMessage>, HeartBeatResponseMessage<PayloadMessage>>(Handler.HandleResponse);
-            _jsonDispatcher.Register<HeartBeatRequestMessage<PayloadMessage>, HeartBeatResponseMessage<PayloadMessage>>(Handler.HandleResponse);
+            //_jsonDispatcher.Register<HeartBeatRequestMessage<PayloadMessage>, HeartBeatResponseMessage<PayloadMessage>>(Handler.HandleResponse);
+
+            //_xmlDispatcher.Bind<Handler>();
+            _jsonDispatcher.Bind<Handler>();
         }
 
         /// <summary>
@@ -57,43 +60,8 @@ namespace Server
                 //XMLChannel xmlNetworkChannel = new XMLChannel();
                 JSONChannel jsonNetworkChannel = new JSONChannel();
 
-                //xmlNetworkChannel.SetCallBack(
-                //    async message =>
-                //    {
-                //        XDocument response = await _xmlDispatcher.DispatchAsync(message).ConfigureAwait(false);
-
-                //        if (response != null)
-                //        {
-                //            try
-                //            {
-                //                await xmlNetworkChannel.SendAsync(response).ConfigureAwait(false);
-                //            }
-                //            catch (Exception ex)
-                //            {
-                //                Console.WriteLine(ex);
-                //            }
-                //        }
-                //    }
-                //);
-
-                jsonNetworkChannel.SetCallBack(
-                    async message =>
-                    {
-                        JObject response = await _jsonDispatcher.DispatchAsync(message).ConfigureAwait(false);
-
-                        if (response != null)
-                        {
-                            try
-                            {
-                                await jsonNetworkChannel.SendAsync(response).ConfigureAwait(false);
-                            }
-                            catch (Exception ex)
-                            {
-                                Console.WriteLine(ex);
-                            }
-                        }
-                    }
-                );
+                //_xmlDispatcher.Bind(xmlNetworkChannel);
+                _jsonDispatcher.Bind(jsonNetworkChannel);
 
                 //xmlNetworkChannel.Attach(clientSocket);
                 jsonNetworkChannel.Attach(clientSocket);

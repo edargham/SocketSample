@@ -13,8 +13,7 @@ namespace Common
     /// </summary>
     /// <typeparam name="TProtocol">The protocol to use to send the message.</typeparam>
     /// <typeparam name="TMessageType">Type of message that will be passed through the channel.</typeparam>
-    public abstract class NetworkChannel<TProtocol, TMessageType> : IDisposable 
-        where TProtocol : Protocol<TMessageType>, new()
+    public abstract class NetworkChannel<TProtocol, TMessageType> : IDisposable, INetworkChannel where TProtocol : Protocol<TMessageType>, new()
     {
         protected bool _isDisposed = false;
 
@@ -25,6 +24,8 @@ namespace Common
 
         private NetworkStream _stream;
         private Task _channelTask;
+
+        public Guid ID => Guid.NewGuid();
 
         /// <summary>
         /// Opens a stream using the socket and dispatches the callback method passed during initialization.
@@ -65,7 +66,7 @@ namespace Common
 
         protected virtual async Task ChannelTask()
         {
-            while(!_cancellationTokenSource.Token.IsCancellationRequested)
+            while (!_cancellationTokenSource.Token.IsCancellationRequested)
             {
                 TMessageType message = await _protocol.ReceiveAsync(_stream).ConfigureAwait(false);
                 await _callback(message).ConfigureAwait(false);
@@ -84,18 +85,18 @@ namespace Common
 
         protected void Dispose(bool isDisposing)
         {
-            if(!_isDisposed)
+            if (!_isDisposed)
             {
                 _isDisposed = true;
 
                 Close();
-                
-                if(_stream != null)
+
+                if (_stream != null)
                 {
                     _stream.Dispose();
-                }    
+                }
 
-                if(isDisposing)
+                if (isDisposing)
                 {
                     GC.SuppressFinalize(this);
                 }

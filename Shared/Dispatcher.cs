@@ -20,15 +20,13 @@ namespace Common
         /// <br />
         /// We assume the method would always return null (the method passed is void) or an XML Document.
         /// </summary>
-        private readonly List<(RouteAttribute rout, Func<TPayloadType, Task<TPayloadType?>> targetMethod)> _handlers = new List<(RouteAttribute route, Func<TPayloadType, Task<TPayloadType?>> targetMethod)>();
+        private readonly List<(RouteAttribute route, Func<TPayloadType, Task<TPayloadType?>> targetMethod)> _handlers = new List<(RouteAttribute route, Func<TPayloadType, Task<TPayloadType?>> targetMethod)>();
 
         protected abstract bool IsValidMatch(RouteAttribute route, TPayloadType message);
         protected abstract RouteAttribute? GetAttribute(MethodInfo methodInfo);
         protected abstract TParam Deserialize<TParam>(TPayloadType payload);
         protected abstract object Deserialize(Type parameterType, TPayloadType payload);
         protected abstract TPayloadType? Serialize<TResult>(TResult result);
-
-
 
         protected bool HasAttribute(MethodInfo methodInfo)
         {

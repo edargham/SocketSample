@@ -8,12 +8,13 @@ using System;
 using System.Net;
 using System.Net.Sockets;
 using System.Threading.Tasks;
-using System.Xml.Linq;
 
 namespace Server
 {
     public class SocketServer
     {
+        private readonly ChannelManager _networkChannelManager;
+
         //private readonly XMLDispatcher _xmlDispatcher = new XMLDispatcher();
         private readonly JSONDispatcher _jsonDispatcher = new JSONDispatcher();
 
@@ -24,6 +25,18 @@ namespace Server
 
             //_xmlDispatcher.Bind<Handler>();
             _jsonDispatcher.Bind<Handler>();
+
+            _networkChannelManager = new ChannelManager(() =>
+            {
+                //XMLChannel xmlNetworkChannel = new XMLChannel();
+                JSONChannel jsonNetworkChannel = new JSONChannel();
+
+                //_xmlDispatcher.Bind(xmlNetworkChannel);
+                _jsonDispatcher.Bind(jsonNetworkChannel);
+
+                //return xmlNetworkChannel;
+                return jsonNetworkChannel;
+            });
         }
 
         /// <summary>
@@ -55,18 +68,11 @@ namespace Server
                                                                new Func<IAsyncResult, Socket>(socket.EndAccept), //
                                                                null).ConfigureAwait(false);
 
-                Console.WriteLine("ECHO SERVER :: NEW CONNECTION ESTABLISHED");
+                Console.WriteLine("SOCKET SERVER :: ESTABLISHING CONNECTION WITH NEW CLIENT");
 
-                //XMLChannel xmlNetworkChannel = new XMLChannel();
-                JSONChannel jsonNetworkChannel = new JSONChannel();
+                _networkChannelManager.Accept(clientSocket);
 
-                //_xmlDispatcher.Bind(xmlNetworkChannel);
-                _jsonDispatcher.Bind(jsonNetworkChannel);
-
-                //xmlNetworkChannel.Attach(clientSocket);
-                jsonNetworkChannel.Attach(clientSocket);
-
-                while (true) { }
+                Console.WriteLine("SOCKET SERVER :: NEW CONNECTION ESTABLISHED");
             }
             while (true);
         }

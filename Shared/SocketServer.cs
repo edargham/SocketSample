@@ -1,42 +1,37 @@
-﻿using Common;
-using Common.JSON;
-using Common.JSONChannels;
-using Common.XML;
-using Common.XMLChannels;
-using Newtonsoft.Json.Linq;
-using System;
+﻿using System;
 using System.Net;
 using System.Net.Sockets;
 using System.Threading.Tasks;
 
-namespace Server
+namespace Common
 {
-    public class SocketServer
+    public abstract class SocketServer<TChannelType, TProtocol, TPayloadType, TDispatcher>
+        where TChannelType : NetworkChannel<TProtocol, TPayloadType>, new()
+        where TProtocol : Protocol<TPayloadType>, new()
+        where TPayloadType: class, new()
+        where TDispatcher : Dispatcher<TPayloadType>, new()
     {
         private readonly ChannelManager _networkChannelManager;
-
-        //private readonly XMLDispatcher _xmlDispatcher = new XMLDispatcher();
-        private readonly JSONDispatcher _jsonDispatcher = new JSONDispatcher();
+        private readonly TDispatcher _dispatcher = new TDispatcher();
 
         public SocketServer()
         {
-            //_xmlDispatcher.Register<HeartBeatRequestMessage<PayloadMessage>, HeartBeatResponseMessage<PayloadMessage>>(Handler.HandleResponse);
-            //_jsonDispatcher.Register<HeartBeatRequestMessage<PayloadMessage>, HeartBeatResponseMessage<PayloadMessage>>(Handler.HandleResponse);
-
-            //_xmlDispatcher.Bind<Handler>();
-            _jsonDispatcher.Bind<Handler>();
-
             _networkChannelManager = new ChannelManager(() =>
             {
-                //XMLChannel xmlNetworkChannel = new XMLChannel();
-                JSONChannel jsonNetworkChannel = new JSONChannel();
-
-                //_xmlDispatcher.Bind(xmlNetworkChannel);
-                _jsonDispatcher.Bind(jsonNetworkChannel);
-
-                //return xmlNetworkChannel;
-                return jsonNetworkChannel;
+                NetworkChannel<TProtocol, TPayloadType> networkChannel = CreateChannel();
+                _dispatcher.Bind(networkChannel);
+                return networkChannel;
             });
+        }
+
+        protected virtual NetworkChannel<TProtocol, TPayloadType> CreateChannel()
+        {
+            return new TChannelType();
+        }
+
+        public void Bind<TController>()
+        {
+            _dispatcher.Bind<TController>();
         }
 
         /// <summary>
@@ -55,18 +50,18 @@ namespace Server
             socket.Bind(endPoint);
             socket.Listen(128);
 
-            _ = Task.Run(() => Echo(socket));
+            _ = Task.Run(() => RunAsync(socket));
         }
 
-        private async Task Echo(Socket socket)
+        private async Task RunAsync(Socket socket)
         {
             do
             {
                 // The initial socket must create the actual client socket that will serve the client endpoint data.
                 // A task factory will be dispatched to configure this socket.
                 Socket clientSocket = await Task.Factory.FromAsync(new Func<AsyncCallback, object, IAsyncResult>(socket.BeginAccept), //
-                                                               new Func<IAsyncResult, Socket>(socket.EndAccept), //
-                                                               null).ConfigureAwait(false);
+                                                                   new Func<IAsyncResult, Socket>(socket.EndAccept), //
+                                                                   null).ConfigureAwait(false);
 
                 Console.WriteLine("SOCKET SERVER :: ESTABLISHING CONNECTION WITH NEW CLIENT");
 
@@ -78,3 +73,4 @@ namespace Server
         }
     }
 }
+

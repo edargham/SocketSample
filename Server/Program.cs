@@ -1,4 +1,5 @@
 ﻿using System;
+using Common.JSON.Server;
 
 namespace Server
 {
@@ -6,7 +7,8 @@ namespace Server
     {
         static void Main(string[] args)
         {
-            SocketServer server = new SocketServer();
+            JSONSocketServer server = new JSONSocketServer();
+            server.Bind<Handler>();
             server.Start();
 
             Console.WriteLine("The Echo server is running....");

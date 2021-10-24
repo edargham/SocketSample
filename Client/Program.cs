@@ -16,26 +16,32 @@ namespace Client
         private static readonly JSONClientChannel _jsonClientChannel = new JSONClientChannel();
         private static readonly JSONDispatcher _jsonDispatcher = new JSONDispatcher();
 
+        private static int _pid = System.Diagnostics.Process.GetCurrentProcess().Id;
+
         private static async Task RequestPayload(int interval)
         {
             Guid requestID = Guid.NewGuid();
-            
+
+            Random rng = new Random();
+
             while(true)
             {
-                PayloadMessage payload = new PayloadMessage
+                POSData payload = new POSData
                 {
-                    IntProp = 69420,
-                    StrProp = "Nice",
+                    _id = _pid,
+                    ItemName = "Foo",
+                    Price = rng.Next(0, 1001),
+                    DatePurchased = DateTime.Now
                 };
 
-                HeartBeatRequestMessage<PayloadMessage> heartbeatRequest = new HeartBeatRequestMessage<PayloadMessage>
+                HeartBeatRequestMessage<POSData> heartbeatRequest = new HeartBeatRequestMessage<POSData>
                 {
                     ID = requestID.ToString(),
                     Data = payload
                 };
 
-                Console.WriteLine("Sending the payload to the echo server...");
-
+                Console.WriteLine("Sending the following payload to the echo server...");
+                Console.WriteLine($"Data to send:\n=================\n{ payload }\n-----------------\n");
                 //await _xmlClientChannel.SendAsync(heartbeatRequest).ConfigureAwait(false);
                 await _jsonClientChannel.SendAsync(heartbeatRequest).ConfigureAwait(false);
 

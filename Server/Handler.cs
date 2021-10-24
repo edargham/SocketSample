@@ -12,14 +12,20 @@ namespace Server
         // Handler on the 'Server' side of the system.
         [XPathRoute("/Message[@type='Request' and @action='HeartBeat']")]
         [JPathRoute("$.action", "HeartBeat")]
-        public static Task<HeartBeatResponseMessage<PayloadMessage>> HandleResponse(HeartBeatRequestMessage<PayloadMessage> request)
+        public static Task<HeartBeatResponseMessage<POSData>> HandleResponse(HeartBeatRequestMessage<POSData> request)
         {
             Received(request);
+            if(request.Data != null)
+            {
+                Console.WriteLine($"CLIENT ID: {request.Data.ID}");
+                request.Data.Price += (int)(request.Data.Price * 0.1); 
+            }
 
-            HeartBeatResponseMessage<PayloadMessage> response = new HeartBeatResponseMessage<PayloadMessage>
+            HeartBeatResponseMessage<POSData> response = new HeartBeatResponseMessage<POSData>
             {
                 ID = request.ID,
-                Result = new Result { Status = Status.Success }
+                Result = new Result { Status = Status.Success },
+                Data = request.Data
             };
 
             Responded(response);

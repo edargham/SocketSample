@@ -1,4 +1,5 @@
 ﻿using System;
+using System.IO;
 using System.Net.Sockets;
 using System.Threading;
 using System.Threading.Tasks;
@@ -16,6 +17,7 @@ namespace Common
     public abstract class NetworkChannel<TProtocol, TMessageType> : IDisposable, INetworkChannel where TProtocol : Protocol<TMessageType>, new()
     {
         protected bool _isDisposed = false;
+        protected bool _isClosed = false;
 
         private readonly TProtocol _protocol = new TProtocol();
         private readonly CancellationTokenSource _cancellationTokenSource = new CancellationTokenSource();
@@ -25,7 +27,11 @@ namespace Common
         private NetworkStream _stream;
         private Task _channelTask;
 
-        public Guid ID => Guid.NewGuid();
+        public Guid ID { get; } = Guid.NewGuid();
+        public DateTime LastSent { get; protected set; }
+        public DateTime LastReceived { get; protected set; }
+
+        public event EventHandler Closed;
 
         /// <summary>
         /// Opens a stream using the socket and dispatches the callback method passed during initialization.
@@ -48,10 +54,20 @@ namespace Common
 
         public void Close()
         {
-            _cancellationTokenSource.Cancel();
-            if (_stream != null)
+            if (!_isClosed)
             {
-                _stream.Close();
+                _isClosed = true;
+                _cancellationTokenSource.Cancel();
+                if (_stream != null)
+                {
+                    _stream.Close();
+                    _channelTask.Wait();
+
+                    if (Closed != null)
+                    {
+                        Closed.Invoke(this, EventArgs.Empty);
+                    }
+                }
             }
         }
 
@@ -62,14 +78,28 @@ namespace Common
         public async Task SendAsync<T>(T message)
         {
             await _protocol.SendAsync(_stream, message).ConfigureAwait(false);
+            LastSent = DateTime.UtcNow;
         }
 
         protected virtual async Task ChannelTask()
         {
-            while (!_cancellationTokenSource.Token.IsCancellationRequested)
+            try
             {
-                TMessageType message = await _protocol.ReceiveAsync(_stream).ConfigureAwait(false);
-                await _callback(message).ConfigureAwait(false);
+                while (!_cancellationTokenSource.Token.IsCancellationRequested)
+                {
+                    TMessageType message = await _protocol.ReceiveAsync(_stream).ConfigureAwait(false);
+                    LastReceived = DateTime.UtcNow;
+                    await _callback(message).ConfigureAwait(false);
+                }
+            }
+            catch (IOException)
+            {
+                Close();
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"NETWORK CHANNEL :: EXCEPTION CAUGHT WHILE RUNNING THE NETWORK CHANNEL TASK LOOP.\nEXCEPTION MESSAGE:\n{ex}\nNETWORK CHANNEL :: TERMINATING SOCKET CONNECTION...\n");
+                Close();
             }
         }
 

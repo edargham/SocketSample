@@ -18,13 +18,13 @@ namespace Client
 
         private static int _pid = System.Diagnostics.Process.GetCurrentProcess().Id;
 
-        private static async Task RequestPayload(int interval)
+        private static async Task RequestPayload(int interval, int numPayloadsToSend)
         {
             Guid requestID = Guid.NewGuid();
 
             Random rng = new Random();
 
-            while(true)
+            while(numPayloadsToSend-- > 0)
             {
                 POSData payload = new POSData
                 {
@@ -74,7 +74,7 @@ namespace Client
             _ = Task.Run(
                 async () =>
                 {
-                    await RequestPayload(5);
+                    await RequestPayload(5, 1);
                 }
             );
 

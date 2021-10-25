@@ -24,7 +24,7 @@ namespace Common
             });
         }
 
-        protected virtual NetworkChannel<TProtocol, TPayloadType> CreateChannel()
+        protected virtual TChannelType CreateChannel()
         {
             return new TChannelType();
         }

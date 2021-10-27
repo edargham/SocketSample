@@ -1,4 +1,5 @@
-﻿using System;
+﻿#nullable enable
+using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Net.Sockets;
@@ -19,6 +20,10 @@ namespace Common
         private readonly Func<INetworkChannel> _networkChannelFactory;
 
         private  readonly Timer _watchdogTimer = new Timer(TIMEOUT_INTERVAL_MINUTES * 60000);
+
+        // REF: 0:20:34
+        public event EventHandler? ChannelClosed;
+        public event EventHandler? ChannelAccepted;
 
         public ChannelManager(Func<INetworkChannel> channelFactory)
         {
@@ -63,7 +68,7 @@ namespace Common
                     Console.WriteLine($"WATCHDOG :: TERMINATING DEAD CHANNEL {channelKey}...");
 
                     INetworkChannel deadChannel = _networkChannels[channelKey];
-                    deadChannel.Close();
+                    deadChannel.Dispose();
 
                     socketsClosed++;
                 }
@@ -81,8 +86,23 @@ namespace Common
         {
             INetworkChannel networkChannel = _networkChannelFactory();
             _ = _networkChannels.TryAdd(networkChannel.ID, networkChannel);
-            networkChannel.Closed += (sender, eventArgs) => _networkChannels.TryRemove(networkChannel.ID, out _);
+            
+            networkChannel.Closed += (sender, eventArgs) =>
+            {
+                _networkChannels.TryRemove(networkChannel.ID, out _);
+                
+                if (ChannelClosed != null)
+                {
+                    ChannelClosed.Invoke(this, EventArgs.Empty);
+                }
+            };
+            
             networkChannel.Attach(socket);
+
+            if (ChannelAccepted != null) 
+            {
+                ChannelAccepted.Invoke(this, EventArgs.Empty);
+            }
         }
     }
 }

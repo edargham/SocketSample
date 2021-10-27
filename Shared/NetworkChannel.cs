@@ -58,16 +58,17 @@ namespace Common
             {
                 _isClosed = true;
                 _cancellationTokenSource.Cancel();
+                
                 if (_stream != null)
                 {
                     _stream.Close();
-                    _channelTask.Wait();
-
-                    if (Closed != null)
-                    {
-                        Closed.Invoke(this, EventArgs.Empty);
-                    }
                 }
+
+                if (Closed != null)
+                {
+                    Closed.Invoke(this, EventArgs.Empty);
+                }
+                
             }
         }
 

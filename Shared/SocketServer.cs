@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Net;
 using System.Net.Sockets;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace Common
@@ -8,20 +9,33 @@ namespace Common
     public abstract class SocketServer<TChannelType, TProtocol, TPayloadType, TDispatcher>
         where TChannelType : NetworkChannel<TProtocol, TPayloadType>, new()
         where TProtocol : Protocol<TPayloadType>, new()
-        where TPayloadType: class, new()
+        where TPayloadType : class, new()
         where TDispatcher : Dispatcher<TPayloadType>, new()
     {
         private readonly ChannelManager _networkChannelManager;
         private readonly TDispatcher _dispatcher = new TDispatcher();
 
-        public SocketServer()
+        private readonly SemaphoreSlim _connectionSemaphore;
+
+        private Func<Socket> _serverSocketFactory;
+
+        public SocketServer(int maxSupportedClients)
         {
+            _connectionSemaphore = new SemaphoreSlim(maxSupportedClients, maxSupportedClients);
+
             _networkChannelManager = new ChannelManager(() =>
             {
                 NetworkChannel<TProtocol, TPayloadType> networkChannel = CreateChannel();
                 _dispatcher.Bind(networkChannel);
                 return networkChannel;
             });
+
+            _networkChannelManager.ChannelClosed += OnChannelClose;
+        }
+
+        private void OnChannelClose(object sender, EventArgs e)
+        {
+            _connectionSemaphore.Release();
         }
 
         protected virtual TChannelType CreateChannel()
@@ -42,34 +56,79 @@ namespace Common
         /// Specify a task for the server to do.
         /// </summary>
         /// <param name="port">The port number reserved for the server.</param>
-        public void Start(int port = 42369)
+        public Task StartAsync(int port, CancellationToken cancellationToken)
         {
-            IPEndPoint endPoint = new IPEndPoint(IPAddress.Loopback, port);
+            _serverSocketFactory = () =>
+            {
+                IPEndPoint endPoint = new IPEndPoint(IPAddress.Loopback, port);
+                Socket socket = new Socket(endPoint.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
+                socket.Bind(endPoint);
+                socket.Listen(128);
+                return socket;
+            };
 
-            Socket socket = new Socket(endPoint.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
-            socket.Bind(endPoint);
-            socket.Listen(128);
+            //_ = Task.Run(() => RunAsync(socket));
 
-            _ = Task.Run(() => RunAsync(socket));
+            return Task.Factory.StartNew(() => RunAsync(cancellationToken), cancellationToken);
         }
 
-        private async Task RunAsync(Socket socket)
+        private async Task AcceptConnection(Socket serverSocket)
         {
-            do
+            // The initial socket must create the actual client socket that will serve the client endpoint data.
+            // A task factory will be dispatched to configure this socket.
+            Socket clientSocket = await Task.Factory.FromAsync(new Func<AsyncCallback, object, IAsyncResult>(serverSocket.BeginAccept), //
+                                                               new Func<IAsyncResult, Socket>(serverSocket.EndAccept), //
+                                                               null).ConfigureAwait(false);
+
+            Console.WriteLine("SOCKET SERVER :: ESTABLISHING CONNECTION WITH NEW CLIENT");
+
+            _networkChannelManager.Accept(clientSocket);
+
+            Console.WriteLine($"SOCKET SERVER :: NEW CONNECTION ESTABLISHED (REMAINING CONNECTIONS AVAILABLE: {_connectionSemaphore.CurrentCount})");
+        }
+
+        private async Task RunAsync(CancellationToken cancellationToken)
+        {
+            try
             {
-                // The initial socket must create the actual client socket that will serve the client endpoint data.
-                // A task factory will be dispatched to configure this socket.
-                Socket clientSocket = await Task.Factory.FromAsync(new Func<AsyncCallback, object, IAsyncResult>(socket.BeginAccept), //
-                                                                   new Func<IAsyncResult, Socket>(socket.EndAccept), //
-                                                                   null).ConfigureAwait(false);
+                Socket serverSocket = null;
 
-                Console.WriteLine("SOCKET SERVER :: ESTABLISHING CONNECTION WITH NEW CLIENT");
+                do
+                {
+                    bool isConnectionAvailable = await _connectionSemaphore.WaitAsync(1000, cancellationToken);
 
-                _networkChannelManager.Accept(clientSocket);
+                    if (!isConnectionAvailable)
+                    {
+                        Console.WriteLine($"SOCKET SERVER :: MAX CONNECTIONS REACHED, DECLINING REQUEST");
+                        try
+                        {
+                            if (serverSocket != null)
+                            {
+                                serverSocket.Close();
+                                serverSocket.Dispose();
+                            }
+                            serverSocket = null;
+                        }
+                        catch { }
 
-                Console.WriteLine("SOCKET SERVER :: NEW CONNECTION ESTABLISHED");
+                        await _connectionSemaphore.WaitAsync(cancellationToken);
+                    }
+
+                    if (!cancellationToken.IsCancellationRequested)
+                    {
+                        if (serverSocket == null)
+                        {
+                            serverSocket = _serverSocketFactory();
+                        }
+                        await AcceptConnection(serverSocket);
+                    }
+                } while (!cancellationToken.IsCancellationRequested);
             }
-            while (true);
+            catch (OperationCanceledException) { }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"SOCKET SERVER :: EXCEPTION CAUGHT WHILE CONNECTING TO THE SOCKET.\nEXCEPTION MESSAGE:\n{ex}");
+            }
         }
     }
 }

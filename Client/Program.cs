@@ -24,7 +24,9 @@ namespace Client
 
             Random rng = new Random();
 
-            while(numPayloadsToSend-- > 0)
+            bool stopCondition() => numPayloadsToSend < 0 || numPayloadsToSend-- > 0;
+
+            while(stopCondition())
             {
                 POSData payload = new POSData
                 {
@@ -58,25 +60,34 @@ namespace Client
             _jsonDispatcher.Bind<Handler>();
 
             Console.WriteLine("Press any key to contact the echo server...");
-            Console.ReadLine();
+            Console.ReadKey();
 
-            IPEndPoint endPoint = new IPEndPoint(IPAddress.Loopback, 42369);
+            try
+            {
 
-            //_xmlDispatcher.Bind(_xmlClientChannel);
-            _jsonDispatcher.Bind(_jsonClientChannel);
-            
-            //_xmlClientChannel.SetCallBack(_xmlDispatcher.DispatchAsync);
-            //_jsonClientChannel.SetCallBack(_jsonDispatcher.DispatchAsync);
 
-            //await _xmlClientChannel.ConnectAsync(endPoint).ConfigureAwait(false);
-            await _jsonClientChannel.ConnectAsync(endPoint).ConfigureAwait(false);
+                IPEndPoint endPoint = new IPEndPoint(IPAddress.Loopback, 42369);
 
-            _ = Task.Run(
-                async () =>
-                {
-                    await RequestPayload(5, 1);
-                }
-            );
+                //_xmlDispatcher.Bind(_xmlClientChannel);
+                _jsonDispatcher.Bind(_jsonClientChannel);
+
+                //_xmlClientChannel.SetCallBack(_xmlDispatcher.DispatchAsync);
+                //_jsonClientChannel.SetCallBack(_jsonDispatcher.DispatchAsync);
+
+                //await _xmlClientChannel.ConnectAsync(endPoint).ConfigureAwait(false);
+                await _jsonClientChannel.ConnectAsync(endPoint).ConfigureAwait(false);
+
+                _ = Task.Run(
+                    async () =>
+                    {
+                        await RequestPayload(5, -1);
+                    }
+                );
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Failed to establish a connection to the server.\nReason:\n{ex}");
+            }
 
             Console.WriteLine("Press any key to continue...");
             Console.ReadLine();

@@ -3,5 +3,10 @@ using Common.XMLChannels;
 
 namespace Common.XML.Server
 {
-    public class XMLSocketServer : SocketServer<XMLChannel, XMLProtocol, XDocument, XMLDispatcher> { }
+    public class XMLSocketServer : SocketServer<XMLChannel, XMLProtocol, XDocument, XMLDispatcher> {
+        public XMLSocketServer(int maxSupportedClients) : base(maxSupportedClients)
+        {
+
+        }
+    }
 }

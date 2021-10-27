@@ -3,5 +3,11 @@ using Newtonsoft.Json.Linq;
 
 namespace Common.JSON.Server
 {
-    public class JSONSocketServer : SocketServer<JSONChannel, JSONProtocol, JObject, JSONDispatcher> { }
+    public class JSONSocketServer : SocketServer<JSONChannel, JSONProtocol, JObject, JSONDispatcher> {
+    
+        public JSONSocketServer(int maxSupportedClients) : base(maxSupportedClients)
+        {
+
+        }
+    }
 }

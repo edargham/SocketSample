@@ -68,7 +68,6 @@ namespace Common
                 {
                     Closed.Invoke(this, EventArgs.Empty);
                 }
-                
             }
         }
 

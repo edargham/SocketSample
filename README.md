@@ -18,7 +18,7 @@ The project is still a work in progress with a huge room for improvement, howeve
 * Server-side Messaging.
 * Abstraction at the level of handler task implementation.
 
-##References
+## References
 
 [Richard Weeks - Sockets Programming YouTube Playlist](https://www.youtube.com/playlist?list=PLHLYG7mk_iQnUkCK3SvZVWghJ1Qts9WKn)
 

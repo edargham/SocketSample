@@ -20,5 +20,5 @@ The project is still a work in progress with a huge room for improvement, howeve
 
 ## References
 
-[Richard Weeks - Sockets Programming YouTube Playlist](https://www.youtube.com/playlist?list=PLHLYG7mk_iQnUkCK3SvZVWghJ1Qts9WKn)
+[Richard Weeks - Sockets Programming YouTube Playlist](https://www.youtube.com/playlist?list=PLHLYG7mk_iQnUkCK3SvZVWghJ1Qts9WKn) \n
 [Richard Weeks - Sockets Programming GitHub Repository](https://github.com/zeul72/SocketsProgramming)

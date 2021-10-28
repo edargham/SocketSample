@@ -10,7 +10,7 @@ The project is still a work in progress with a huge room for improvement, howeve
 * Both JSON and XML serialization are supported and implemented.
 * Ability to extend the base classes to support other serialization methods.
 * Channel Routing
-* Channel Throttling
+* Channel 'Grooming'
 * Connection Limiting
 
 ## Roadmap

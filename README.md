@@ -12,10 +12,10 @@ The project is still a work in progress with a huge room for improvement, howeve
 * Channel Routing
 * Channel 'Grooming'
 * Connection Limiting
+* Server-side Messaging.
 
 ## Roadmap
 * Optimizations at the Action Binding level.
-* Server-side Messaging.
 * Abstraction at the level of handler task implementation.
 
 ## References

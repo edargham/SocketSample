@@ -9,7 +9,7 @@ namespace Common
     /// The format all messages passed to the routes must follow.
     /// </summary>
     [XmlRoot("Message")]
-    public abstract class Message
+    public abstract class Message<T> where T : class
     {
         [XmlAttribute("id")]
         [JsonProperty("id")]
@@ -22,5 +22,9 @@ namespace Common
         [XmlAttribute("action")]
         [JsonProperty("action")]
         public string? Action { get; set; }
+
+        [XmlElement("Data")]
+        [JsonProperty("data")]
+        public T? Data { get; set; }
     }
 }

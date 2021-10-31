@@ -4,7 +4,7 @@ using System.Xml.Serialization;
 
 namespace Common
 {
-    public class POSData : Payload
+    public class POSData : Model
     {
         [XmlAttribute("ID")]
         [JsonProperty("id")]

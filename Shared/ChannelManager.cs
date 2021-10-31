@@ -55,7 +55,7 @@ namespace Common
                     DateTime lastActivityTime = DateTime.Compare(channel.LastReceived, channel.LastSent) > 0 ? channel.LastReceived : channel.LastSent;
                     int lastActivityDuration = DateTime.Compare(delta, lastActivityTime);
 
-                    if (lastActivityDuration < 0)
+                    if (lastActivityDuration > 0)
                     {
                         deadChannels.Add(channelKey);
                     }

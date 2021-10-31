@@ -15,6 +15,7 @@ namespace Client
         //private static readonly XMLDispatcher _xmlDispatcher = new XMLDispatcher();
         private static readonly JSONClientChannel _jsonClientChannel = new JSONClientChannel();
         private static readonly JSONDispatcher _jsonDispatcher = new JSONDispatcher();
+        private static readonly Random _rng = new Random();
 
         private static int _pid = System.Diagnostics.Process.GetCurrentProcess().Id;
 
@@ -22,17 +23,15 @@ namespace Client
         {
             Guid requestID = Guid.NewGuid();
 
-            Random rng = new Random();
-
             bool stopCondition() => numPayloadsToSend < 0 || numPayloadsToSend-- > 0;
 
-            while(stopCondition())
+            while (stopCondition())
             {
                 POSData payload = new POSData
                 {
                     _id = _pid,
                     ItemName = "Foo",
-                    Price = rng.Next(0, 1001),
+                    Price = _rng.Next(0, 1001),
                     DatePurchased = DateTime.Now
                 };
 
@@ -51,6 +50,35 @@ namespace Client
             }
         }
 
+        private async static void SendBasketRequest()
+        {
+            ConsoleKeyInfo key;
+            do
+            {
+                Console.WriteLine("Press F to send basket...");
+                key = Console.ReadKey();
+
+                if (key.Key == ConsoleKey.F)
+                {
+                    Guid requestID = Guid.NewGuid();
+
+                    POSData data = new POSData
+                    {
+                        _id = _pid,
+                    };
+
+                    SubmitBasketRequest request = new SubmitBasketRequest
+                    {
+                        ID = requestID.ToString(),
+                        Data = data,
+                        POSTransactionNumber = $"POS_TXID_{requestID}"
+                    };
+
+                    await _jsonClientChannel.SendAsync(request).ConfigureAwait(false);
+                }
+            } while (key.Key != ConsoleKey.F);
+        }
+
         public static async Task Main(string[] args)
         {
             //_xmlDispatcher.Register<HeartBeatResponseMessage<PayloadMessage>>(Handler.HeartBeatResponseHandler);
@@ -64,8 +92,6 @@ namespace Client
 
             try
             {
-
-
                 IPEndPoint endPoint = new IPEndPoint(IPAddress.Loopback, 42369);
 
                 //_xmlDispatcher.Bind(_xmlClientChannel);
@@ -78,11 +104,13 @@ namespace Client
                 await _jsonClientChannel.ConnectAsync(endPoint).ConfigureAwait(false);
 
                 _ = Task.Run(
-                    async () =>
+                    () =>
                     {
-                        await RequestPayload(5, -1);
+                        RequestPayload(30, -1);
                     }
                 );
+
+                SendBasketRequest();
             }
             catch (Exception ex)
             {

@@ -77,8 +77,8 @@ namespace Common
         /// <param name="message">The message to send through the socket.</param>
         public async Task SendAsync<T>(T message)
         {
-            await _protocol.SendAsync(_stream, message).ConfigureAwait(false);
             LastSent = DateTime.UtcNow;
+            await _protocol.SendAsync(_stream, message).ConfigureAwait(false);
         }
 
         protected virtual async Task ChannelTask()
@@ -87,8 +87,8 @@ namespace Common
             {
                 while (!_cancellationTokenSource.Token.IsCancellationRequested)
                 {
-                    TMessageType message = await _protocol.ReceiveAsync(_stream).ConfigureAwait(false);
                     LastReceived = DateTime.UtcNow;
+                    TMessageType message = await _protocol.ReceiveAsync(_stream).ConfigureAwait(false);
                     await _callback(message).ConfigureAwait(false);
                 }
             }

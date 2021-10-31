@@ -20,7 +20,7 @@ namespace Common
         /// <br />
         /// We assume the method would always return null (the method passed is void) or an XML Document.
         /// </summary>
-        private readonly List<(RouteAttribute route, Func<TPayloadType, Task<TPayloadType?>> targetMethod)> _handlers = new List<(RouteAttribute route, Func<TPayloadType, Task<TPayloadType?>> targetMethod)>();
+        private readonly List<(RouteAttribute route, Func<INetworkChannel, TPayloadType, Task<TPayloadType?>> targetMethod)> _handlers = new List<(RouteAttribute route, Func<INetworkChannel, TPayloadType, Task<TPayloadType?>> targetMethod)>();
 
         protected abstract bool IsValidMatch(RouteAttribute route, TPayloadType message);
         protected abstract RouteAttribute? GetAttribute(MethodInfo methodInfo);
@@ -43,18 +43,18 @@ namespace Common
         /// <typeparam name="TParam">The type of the parameters to pass to the target method.</typeparam>
         /// <typeparam name="TResult">The type of the returned output of the target method.</typeparam>
         /// <param name="target">The target method to regiter to a route.</param>
-        public virtual void Register<TParam, TResult>(Func<TParam, Task<TResult>> target)
+        public virtual void Register<TParam, TResult>(Func<INetworkChannel, TParam, Task<TResult>> target)
         {
             if (!HasAttribute(target.Method))
             {
                 throw new Exception("No RouteAttribute was specified.");
             }
 
-            Func<TPayloadType, Task<TPayloadType?>> wrapper = new Func<TPayloadType, Task<TPayloadType?>>(
-            async payload =>
+            Func<INetworkChannel, TPayloadType, Task<TPayloadType?>> wrapper = new Func<INetworkChannel, TPayloadType, Task<TPayloadType?>>(
+            async (channel, payload) =>
             {
                 TParam param = Deserialize<TParam>(payload);
-                TResult result = await target(param);
+                TResult result = await target(channel, param);
 
                 if (result != null)
                 {
@@ -83,8 +83,8 @@ namespace Common
                 throw new Exception("No RouteAttribute was specified.");
             }
 
-            Func<TPayloadType, Task<TPayloadType?>> wrapper = new Func<TPayloadType, Task<TPayloadType?>>(
-            async payload =>
+            Func<INetworkChannel, TPayloadType, Task<TPayloadType?>> wrapper = new Func<INetworkChannel, TPayloadType, Task<TPayloadType?>>(
+            async (channel, payload) =>
             {
                 TParam param = Deserialize<TParam>(payload);
                 await target(param);
@@ -94,7 +94,7 @@ namespace Common
             AddHandler(GetAttribute(target.Method), wrapper);
         }
 
-        protected void AddHandler(RouteAttribute route, Func<TPayloadType, Task<TPayloadType?>> callback)
+        protected void AddHandler(RouteAttribute route, Func<INetworkChannel, TPayloadType, Task<TPayloadType?>> callback)
         {
             _handlers.Add((route, callback));
         }
@@ -102,33 +102,33 @@ namespace Common
         /// <summary>
         /// Evaluates the handlers. If valid, pass the serialized document to the target method and execute it.
         /// </summary>
-        /// <param name="message">The XML Document to pass to the target method.</param>
+        /// <param name="channel">The channel on whitch the target callback method is to be dispatched.</param>
+        /// <param name="message">The serialzied document to pass to the target method.</param>
         /// <returns>The value returned by the target method.</returns>
-        public async Task<TPayloadType?> DispatchAsync(TPayloadType message)
+        public async Task<TPayloadType?> DispatchAsync(INetworkChannel channel, TPayloadType message)
         {
             foreach (var (route, target) in _handlers)
             {
                 if (IsValidMatch(route, message))
                 {
-                    return await target(message);
+                    return await target(channel, message);
                 }
             }
-            //No handler?? what to do??
             return null;
         }
 
-        public void Bind<TProtocol>(NetworkChannel<TProtocol, TPayloadType> networkChannel) where TProtocol : Protocol<TPayloadType>, new()
+        public void Bind<TProtocol>(NetworkChannel<TProtocol, TPayloadType> channel) where TProtocol : Protocol<TPayloadType>, new()
         {
-            networkChannel.SetCallBack(
+            channel.SetCallBack(
                 async message =>
                 {
-                    TPayloadType? response = await DispatchAsync(message).ConfigureAwait(false);
+                    TPayloadType? response = await DispatchAsync(channel, message).ConfigureAwait(false);
 
                     if (response != null)
                     {
                         try
                         {
-                            await networkChannel.SendAsync(response).ConfigureAwait(false);
+                            await channel.SendAsync(response).ConfigureAwait(false);
                         }
                         catch (Exception ex)
                         {
@@ -158,21 +158,34 @@ namespace Common
 
             List<MethodInfo> taskList = typeof(THandler).GetMethods(BindingFlags.Public | BindingFlags.Static)
                                                         .Where(HasAttribute)
-                                                        .Where(task => task.GetParameters().Count() == 1 && (assertTypeIsTask(task) || assertTypeIsTaskT(task)))
+                                                        .Where(task => task.GetParameters().Count() >= 1 && task.GetParameters().Count() <= 2)
+                                                        .Where(task => assertTypeIsTask(task) || assertTypeIsTaskT(task))
                                                         .ToList();
 
             foreach (MethodInfo method in taskList)
             {
-                var wrapper = new Func<TPayloadType, Task<TPayloadType?>>(
-                    async payload =>
+                var wrapper = new Func<INetworkChannel, TPayloadType, Task<TPayloadType?>>(
+                    async (channel, payload) =>
                     {
-                        var @param = Deserialize(method.GetParameters()[0].ParameterType, payload);
+                        int paramCount = method.GetParameters().Count();
+                        var @param = (paramCount == 1)? Deserialize(method.GetParameters()[0].ParameterType, payload) : Deserialize(method.GetParameters()[1].ParameterType, payload);
 
                         try
                         {
                             if (assertTypeIsTask(method))
                             {
-                                var task = method.Invoke(null, new object[] { param }) as Task;
+                                object[] methodParameters;
+
+                                if (paramCount == 1)
+                                {
+                                    methodParameters = new object[] { @param };
+                                }
+                                else
+                                {
+                                    methodParameters = new object[] { channel, @param };
+                                }
+
+                                Task? task = method.Invoke(null, methodParameters) as Task;
 
                                 if (task != null)
                                 {
@@ -183,7 +196,18 @@ namespace Common
                             }
                             else
                             {
-                                var taskResult = (await (method.Invoke(null, new object[] { param }) as dynamic) as dynamic);
+                                object[] methodParameters;
+
+                                if (paramCount == 1)
+                                {
+                                    methodParameters = new object[] { @param };
+                                }
+                                else
+                                {
+                                    methodParameters = new object[] { channel, @param };
+                                }
+
+                                dynamic? taskResult = (await (method.Invoke(null, methodParameters) as dynamic) as dynamic);
 
                                 if (taskResult != null)
                                 {

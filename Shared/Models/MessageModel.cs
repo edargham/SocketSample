@@ -4,7 +4,7 @@ using System.Xml.Serialization;
 
 namespace Common
 {
-    public class PayloadMessage : Payload
+    public class MessageModel : Model
     {
         [XmlAttribute("ID")]
         [JsonProperty("id")]

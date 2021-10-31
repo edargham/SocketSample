@@ -2,7 +2,7 @@
 
 namespace Common
 {
-    public abstract class Payload
+    public abstract class Model
     {
         public int _id;
     }
